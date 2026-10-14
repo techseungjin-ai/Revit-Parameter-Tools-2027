@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <Configurations>Debug;Release</Configurations>
+    <AssemblyName>ParameterValueCopier</AssemblyName>
+    <RootNamespace>ParameterValueCopier</RootNamespace>
+    <!-- Suppress MSB3277 conflict warnings -->
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2027\RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2027\RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\*.png" />
+    <None Update="Resources\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Auto deploy to Revit 2027 Addins folder with hot-swap support -->
+  <Target Name="DeployToRevit" AfterTargets="Build">
+    <PropertyGroup>
+      <RevitAddinsDir>$(AppData)\Autodesk\Revit\Addins\2027</RevitAddinsDir>
+      <TargetAddinDir>$(RevitAddinsDir)\ParameterValueCopier</TargetAddinDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(TargetAddinDir)" />
+    <MakeDir Directories="$(TargetAddinDir)\Resources" />
+    <Exec Command="powershell -Command &quot;try { if (Test-Path '$(TargetAddinDir)\ParameterValueCopier.dll.bak') { Remove-Item '$(TargetAddinDir)\ParameterValueCopier.dll.bak' -Force -ErrorAction SilentlyContinue } } catch {}; try { if (Test-Path '$(TargetAddinDir)\ParameterValueCopier.dll') { Rename-Item '$(TargetAddinDir)\ParameterValueCopier.dll' 'ParameterValueCopier.dll.bak' -Force -ErrorAction SilentlyContinue } } catch {}; exit 0&quot;" ContinueOnError="true" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(TargetAddinDir)" ContinueOnError="true" Retries="0" />
+    <Copy SourceFiles="$(ProjectDir)ParameterValueCopier.addin" DestinationFolder="$(RevitAddinsDir)" ContinueOnError="true" Retries="0" />
+    <ItemGroup>
+      <ResourceFiles Include="$(ProjectDir)Resources\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ResourceFiles)" DestinationFolder="$(TargetAddinDir)\Resources" ContinueOnError="true" Retries="0" />
+    <Message Importance="High" Text="[ParameterValueCopier] Build and deployed successfully." />
+  </Target>
+
+</Project>

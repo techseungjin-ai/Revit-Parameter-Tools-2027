@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>ParameterValueCopier</Name>
+    <Assembly>ParameterValueCopier\ParameterValueCopier.dll</Assembly>
+    <FullClassName>ParameterValueCopier.App</FullClassName>
+    <ClientId>c748c903-8d2a-4a67-b844-3ec9035fd702</ClientId>
+    <VendorId>USER</VendorId>
+    <VendorDescription>Revit 2027 Parameter Value Copier Addin</VendorDescription>
+  </AddIn>
+</RevitAddIns>

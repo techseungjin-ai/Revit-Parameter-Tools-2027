@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>ParameterBatchManager</Name>
+    <Assembly>ParameterBatchManager\ParameterBatchManager.dll</Assembly>
+    <FullClassName>ParameterBatchManager.App</FullClassName>
+    <ClientId>9f1d0a5b-48c2-493e-953e-51c0cf91b24e</ClientId>
+    <VendorId>USER</VendorId>
+    <VendorDescription>Revit 2027 Parameter Clone &amp; Batch Creation Addin</VendorDescription>
+  </AddIn>
+</RevitAddIns>

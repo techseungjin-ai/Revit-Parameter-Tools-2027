@@ -1,0 +1,396 @@
+<Window x:Class="ParameterValueCopier.Views.ValueCopierWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:ParameterValueCopier.ViewModels"
+        mc:Ignorable="d"
+        Title="Revit 매개변수 데이터 값 복사 (Parameter Value Copier) - Revit 2027"
+        Height="840" Width="1160"
+        MinHeight="700" MinWidth="960"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Malgun Gothic, Segoe UI"
+        Background="#F4F5F7">
+
+    <Window.Resources>
+        <!-- Modern Palette -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#0284C7"/>
+        <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#0369A1"/>
+        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#0F172A"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E2E8F0"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="SuccessGreen" Color="#059669"/>
+        <SolidColorBrush x:Key="SuccessGreenHover" Color="#047857"/>
+
+        <!-- Base Button Style -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryHoverBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#CBD5E1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SelectionActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#4F46E5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#4338CA"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource SuccessGreen}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SuccessGreenHover}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Header -->
+            <RowDefinition Height="Auto"/> <!-- Scope Section -->
+            <RowDefinition Height="2*"/>   <!-- Parameters Section -->
+            <RowDefinition Height="Auto"/> <!-- Compatibility & Options -->
+            <RowDefinition Height="1.8*"/> <!-- Preview Grid -->
+            <RowDefinition Height="Auto"/> <!-- Action & Status -->
+        </Grid.RowDefinitions>
+
+        <!-- Top Header -->
+        <Border Grid.Row="0" Background="{StaticResource HeaderBackgroundBrush}" Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="🔄 Revit 매개변수 데이터 값 복사기" FontSize="18" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    <Border Background="#1E293B" CornerRadius="3" Padding="6,2" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Revit 2027 (.NET 10.0 / 모델리스 모드)" FontSize="11" Foreground="#94A3B8"/>
+                    </Border>
+                </StackPanel>
+                <Border Grid.Column="1" Background="#065F46" CornerRadius="4" Padding="10,4">
+                    <TextBlock Text="💡 창을 띄워둔 채로 Revit 객체 선택 및 특성 창 조회가 가능합니다" FontSize="11" Foreground="#A7F3D0" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- 1. Scope Selection Section -->
+        <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="🎯 적용 대상 범위:" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" Margin="0,0,14,0"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <RadioButton Content="{Binding ActiveViewDescription}" IsChecked="{Binding IsActiveViewScope}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <RadioButton Content="선택된 요소만" IsChecked="{Binding IsSelectedScope}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <Button Content="🎯 Revit 선택 객체 가져오기" Command="{Binding FetchCurrentSelectionCommand}" Style="{StaticResource SelectionActionButton}" Padding="8,3" FontSize="11" Margin="0,0,16,0"/>
+                    
+                    <RadioButton Content="카테고리 전체:" IsChecked="{Binding IsCategoryScope}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox ItemsSource="{Binding AvailableCategories}" SelectedItem="{Binding SelectedCategory}"
+                              DisplayMemberPath="Name" Width="140" Padding="4,2"
+                              IsEnabled="{Binding IsCategoryScope}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="4" Padding="10,4" Margin="0,0,8,0">
+                        <TextBlock FontSize="12" FontWeight="Bold" Foreground="#1D4ED8">
+                            <Run Text="감지된 요소: "/>
+                            <Run Text="{Binding ElementCount, Mode=OneWay}"/>
+                            <Run Text="개"/>
+                        </TextBlock>
+                    </Border>
+                    <Button Content="🔄 대상 새로고침" Style="{StaticResource SecondaryButton}" Command="{Binding RefreshScopeCommand}" Padding="8,4" FontSize="11"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 2. Parameter Selection (Source vs Target) -->
+        <Grid Grid.Row="2" Margin="12,10,12,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="60"/> <!-- Arrow separator -->
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Source Parameter (A) -->
+            <Border Grid.Column="0" Background="White" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock Text="📥 원본 매개변수 (Source A)" FontWeight="Bold" FontSize="13" Foreground="#0284C7"/>
+                        <TextBlock Text="복사해올 데이터가 들어있는 매개변수 선택" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <!-- Search -->
+                    <TextBox Grid.Row="1" Text="{Binding SourceSearchText, UpdateSourceTrigger=PropertyChanged}" Padding="6,4" Margin="0,0,0,6">
+                        <TextBox.Resources>
+                            <VisualBrush x:Key="SourceHint" TileMode="None" Stretch="None" AlignmentX="Left">
+                                <VisualBrush.Visual>
+                                    <TextBlock Text="🔍 원본 매개변수 검색 (예: PANNEL_B_L-1 또는 치수_1)..." Foreground="#94A3B8" Margin="4,0,0,0"/>
+                                </VisualBrush.Visual>
+                            </VisualBrush>
+                        </TextBox.Resources>
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Background" Value="{StaticResource SourceHint}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- ListBox -->
+                    <ListBox Grid.Row="2" ItemsSource="{Binding FilteredSourceParameters}" SelectedItem="{Binding SelectedSourceParameter}"
+                             Background="#FAFAFA" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="6,4" Margin="0,1" Background="White" CornerRadius="3" BorderBrush="#E2E8F0" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="#0F172A"/>
+                                            <TextBlock Text="{Binding GroupName, StringFormat='그룹: {0}'}" FontSize="10" Foreground="#64748B"/>
+                                        </StackPanel>
+                                        <Border Grid.Column="1" Background="{Binding BadgeBgColor}" CornerRadius="3" Padding="6,3" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding BadgeText}" FontSize="10" Foreground="{Binding BadgeFgColor}" FontWeight="Bold"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- Center Transfer Arrow -->
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Background="#F1F5F9" CornerRadius="20" Width="36" Height="36">
+                    <TextBlock Text="➔" FontSize="20" FontWeight="Bold" Foreground="#0284C7" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="복사" FontSize="11" FontWeight="Bold" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- Target Parameter (B) -->
+            <Border Grid.Column="2" Background="White" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock Text="📤 대상 매개변수 (Target B)" FontWeight="Bold" FontSize="13" Foreground="#059669"/>
+                        <TextBlock Text="값을 주입하여 덮어쓸 매개변수 선택 (읽기 전용 자동 제외)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <!-- Search -->
+                    <TextBox Grid.Row="1" Text="{Binding TargetSearchText, UpdateSourceTrigger=PropertyChanged}" Padding="6,4" Margin="0,0,0,6">
+                        <TextBox.Resources>
+                            <VisualBrush x:Key="TargetHint" TileMode="None" Stretch="None" AlignmentX="Left">
+                                <VisualBrush.Visual>
+                                    <TextBlock Text="🔍 대상 매개변수 검색 (예: RVT_PANEL_TOP_L)..." Foreground="#94A3B8" Margin="4,0,0,0"/>
+                                </VisualBrush.Visual>
+                            </VisualBrush>
+                        </TextBox.Resources>
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Background" Value="{StaticResource TargetHint}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- ListBox -->
+                    <ListBox Grid.Row="2" ItemsSource="{Binding FilteredTargetParameters}" SelectedItem="{Binding SelectedTargetParameter}"
+                             Background="#FAFAFA" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="6,4" Margin="0,1" Background="White" CornerRadius="3" BorderBrush="#E2E8F0" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="#0F172A"/>
+                                            <TextBlock Text="{Binding GroupName, StringFormat='그룹: {0}'}" FontSize="10" Foreground="#64748B"/>
+                                        </StackPanel>
+                                        <Border Grid.Column="1" Background="#ECFDF5" CornerRadius="3" Padding="5,2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding StorageTypeName}" FontSize="10" Foreground="#047857" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 3. Compatibility Analysis & Smart Conversion Options -->
+        <Border Grid.Row="3" Background="White" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12,10" Margin="12,0,12,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.4*"/> <!-- Compatibility Analysis -->
+                    <ColumnDefinition Width="*"/>    <!-- Conversion Options -->
+                </Grid.ColumnDefinitions>
+
+                <!-- Compatibility Box -->
+                <Border Grid.Column="0" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,10,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="💡 데이터 유형 호환성 분석:" FontWeight="Bold" FontSize="11" Foreground="#334155" Margin="0,0,0,4"/>
+                        <TextBlock Grid.Row="1" Text="{Binding TypeCompatibilityNotice}" FontSize="11" Foreground="#0F172A" TextWrapping="Wrap" LineHeight="17"/>
+                    </Grid>
+                </Border>
+
+                <!-- Options -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="⚙️ 스마트 변환 옵션" FontWeight="Bold" FontSize="11" Foreground="#334155" Margin="0,0,0,4"/>
+                    
+                    <!-- Decimal places selector -->
+                    <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" Padding="6,4" Margin="0,2,0,4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
+                                <TextBlock Text="🔢 소수점 이하 자릿수:" FontWeight="Bold" FontSize="11" Foreground="#047857"/>
+                                <TextBlock Text="수치 반올림 규칙 지정" FontSize="9" Foreground="#64748B"/>
+                            </StackPanel>
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding AvailableDecimalPlaces}" SelectedItem="{Binding SelectedDecimalPlaceOption}"
+                                      DisplayMemberPath="DisplayName" Padding="6,3" FontSize="11" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <CheckBox Content="단위 기호 포함 (예: 249 mm)" IsChecked="{Binding AppendUnitSymbol}" Margin="0,2"/>
+                    <CheckBox Content="기존 대상 매개변수 값이 이미 있는 경우 덮어쓰기" IsChecked="{Binding OverwriteExisting}" Margin="0,2"/>
+                    <CheckBox Content="원본 값이 비어있는 경우(Null) 건너뛰기" IsChecked="{Binding SkipEmptySource}" Margin="0,2"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 4. Preview Table (DataGrid) -->
+        <Border Grid.Row="4" Background="White" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="10" Margin="12,0,12,6">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,6">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="🔍 변환 미리보기 (상위 15개 요소 실시간 검증)" FontWeight="Bold" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                    <Button HorizontalAlignment="Right" Content="미리보기 새로고침" Style="{StaticResource SecondaryButton}" Command="{Binding RefreshPreviewCommand}" Padding="6,2" FontSize="11"/>
+                </Grid>
+
+                <DataGrid Grid.Row="1" ItemsSource="{Binding PreviewRows}" AutoGenerateColumns="False" IsReadOnly="True"
+                          RowHeaderWidth="20" AlternatingRowBackground="#F8FAFC"
+                          BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="요소 ID" Binding="{Binding ElementIdValue}" Width="75"/>
+                        <DataGridTextColumn Header="요소 이름" Binding="{Binding ElementName}" Width="1.5*"/>
+                        <DataGridTextColumn Header="카테고리" Binding="{Binding CategoryName}" Width="*"/>
+                        <DataGridTextColumn Header="원본 현재 값 [A]" Binding="{Binding SourceCurrentValue}" Width="1.2*"/>
+                        <DataGridTextColumn Header="대상 현재 값 [B]" Binding="{Binding TargetCurrentValue}" Width="1.2*"/>
+                        <DataGridTextColumn Header="변환될 새 값" Binding="{Binding ConvertedNewValue}" Width="1.5*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Foreground" Value="#059669"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="변환 상태" Binding="{Binding Status}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <!-- 5. Action Execution & Logs -->
+        <Border Grid.Row="5" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="14,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Status & Log Expander -->
+                <Expander Grid.Column="0" Header="{Binding StatusMessage}" IsExpanded="False" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <Grid Margin="0,6,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="100"/>
+                        </Grid.RowDefinitions>
+                        <Button Grid.Row="0" HorizontalAlignment="Right" Content="로그 지우기" Command="{Binding ClearLogCommand}" Style="{StaticResource SecondaryButton}" Padding="4,1" FontSize="10" Margin="0,0,0,2"/>
+                        <TextBox Grid.Row="1" Text="{Binding ExecutionLog, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11" Background="#F8FAFC" Padding="4"/>
+                    </Grid>
+                </Expander>
+
+                <!-- Execute Button -->
+                <Button Grid.Column="1" Content="🚀 매개변수 데이터 값 복사 실행" Command="{Binding ExecuteCopyCommand}" Style="{StaticResource ActionButton}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,488 @@
+<Window x:Class="ParameterBatchManager.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:ParameterBatchManager.ViewModels"
+        xmlns:models="clr-namespace:ParameterBatchManager.Models"
+        mc:Ignorable="d"
+        Title="Revit 매개변수 복제 &amp; 일괄 생성기 (Parameter Batch Manager) - Revit 2027"
+        Height="780" Width="1180"
+        MinHeight="650" MinWidth="950"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Malgun Gothic, Segoe UI"
+        Background="#F4F5F7">
+
+    <Window.Resources>
+        <!-- Modern Color Palette -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#0066CC"/>
+        <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#0052A3"/>
+        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#1E293B"/>
+        <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E2E8F0"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="AccentGreenBrush" Color="#10B981"/>
+
+        <!-- Base Button Style -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryHoverBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Secondary Button Style -->
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#CBD5E1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Success/Action Button Style -->
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#059669"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#047857"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Header -->
+            <RowDefinition Height="*"/>    <!-- Main Content -->
+            <RowDefinition Height="Auto"/> <!-- Bottom Log / Status -->
+        </Grid.RowDefinitions>
+
+        <!-- Top Header -->
+        <Border Grid.Row="0" Background="{StaticResource HeaderBackgroundBrush}" Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⚡ Revit 매개변수 일괄 관리자" FontSize="18" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    <Border Background="#334155" CornerRadius="3" Padding="6,2" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Revit 2027 (.NET 10.0)" FontSize="11" Foreground="#94A3B8"/>
+                    </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="🔄 매개변수 새로고침" Style="{StaticResource SecondaryButton}" Command="{Binding RefreshCommand}" Margin="0,0,8,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Workspace -->
+        <Grid Grid.Row="1" Margin="12,10,12,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>      <!-- Left: Clone & Batch Operations -->
+                <ColumnDefinition Width="340"/>    <!-- Right: Categories Checklist -->
+            </Grid.ColumnDefinitions>
+
+            <!-- Main Tab Control -->
+            <TabControl Grid.Column="0" Background="Transparent" BorderThickness="0" Margin="0,0,10,0">
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="FontSize" Value="13"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Padding" Value="16,8"/>
+                        <Setter Property="Margin" Value="0,0,4,0"/>
+                    </Style>
+                </TabControl.Resources>
+
+                <!-- TAB 1: 기존 매개변수 복제 (CLONE) -->
+                <TabItem Header="📋 기존 매개변수 복제 (Clone)">
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="360"/> <!-- Existing Parameter List -->
+                            <ColumnDefinition Width="*"/>   <!-- Clone Config & Execution -->
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Existing Parameters Explorer -->
+                        <Border Grid.Column="0" Background="White" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12" Margin="0,0,10,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Text="기존 프로젝트 매개변수 목록" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+
+                                <!-- Search Filter -->
+                                <TextBox Grid.Row="1" Text="{Binding ParameterSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="8,6" Margin="0,0,0,8" VerticalAlignment="Center">
+                                    <TextBox.Resources>
+                                        <VisualBrush x:Key="HintBrush" TileMode="None" Stretch="None" AlignmentX="Left">
+                                            <VisualBrush.Visual>
+                                                <TextBlock Text="🔍 매개변수 이름 / 유형 / 그룹 검색..." Foreground="#94A3B8" Margin="4,0,0,0"/>
+                                            </VisualBrush.Visual>
+                                        </VisualBrush>
+                                    </TextBox.Resources>
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Style.Triggers>
+                                                <Trigger Property="Text" Value="">
+                                                    <Setter Property="Background" Value="{StaticResource HintBrush}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+
+                                <!-- Parameters ListBox -->
+                                <ListBox Grid.Row="2" ItemsSource="{Binding FilteredExistingParameters}"
+                                         SelectedItem="{Binding SelectedParameter}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                         Background="#FAFAFA">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="6,6" Margin="0,2" Background="White" CornerRadius="4" BorderBrush="#E2E8F0" BorderThickness="1">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <TextBlock Grid.Row="0" Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="#0F172A"/>
+                                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,3,0,0">
+                                                        <Border Background="#EFF6FF" CornerRadius="2" Padding="4,1" Margin="0,0,4,0">
+                                                            <TextBlock Text="{Binding DataTypeName}" FontSize="10" Foreground="#1D4ED8"/>
+                                                        </Border>
+                                                        <Border Background="#F1F5F9" CornerRadius="2" Padding="4,1" Margin="0,0,4,0">
+                                                            <TextBlock Text="{Binding GroupName}" FontSize="10" Foreground="#475569"/>
+                                                        </Border>
+                                                        <Border Background="#ECFDF5" CornerRadius="2" Padding="4,1">
+                                                            <TextBlock Text="{Binding BindingTypeDescription}" FontSize="10" Foreground="#047857"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Row="2" Text="{Binding CategorySummary}" FontSize="10" Foreground="#64748B" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Border>
+
+                        <!-- Right: Clone Settings and Action -->
+                        <Border Grid.Column="1" Background="White" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="14">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <TextBlock Text="⚙️ 매개변수 복제 설정" FontWeight="Bold" FontSize="14" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,10"/>
+
+                                    <!-- Information Notice -->
+                                    <Border Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,12">
+                                        <TextBlock Text="💡 왼쪽에서 매개변수를 선택하면 데이터 유형, 그룹, 인스턴스/유형, 바인딩된 카테고리 설정이 자동으로 복사됩니다."
+                                                   FontSize="11" Foreground="#166534" TextWrapping="Wrap"/>
+                                    </Border>
+
+                                    <!-- Target Attributes (Defaults to selected param, editable) -->
+                                    <GroupBox Header="복제 대상 속성 (기본 원본 유지 / 필요시 변경)" FontWeight="SemiBold" Margin="0,0,0,12" Padding="8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                                <TextBlock Text="데이터 유형" FontSize="11" Margin="0,0,0,4"/>
+                                                <ComboBox ItemsSource="{Binding AvailableDataTypes}" SelectedItem="{Binding CloneDataType}" DisplayMemberPath="DisplayName" Padding="6,5"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="6,0,6,0">
+                                                <TextBlock Text="그룹 매개변수" FontSize="11" Margin="0,0,0,4"/>
+                                                <ComboBox ItemsSource="{Binding AvailableGroups}" SelectedItem="{Binding CloneGroup}" DisplayMemberPath="DisplayName" Padding="6,5"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Margin="6,0,0,0">
+                                                <TextBlock Text="바인딩 유형" FontSize="11" Margin="0,0,0,4"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                    <RadioButton Content="인스턴스" IsChecked="{Binding CloneIsInstance}" Margin="0,0,8,0"/>
+                                                    <RadioButton Content="유형" IsChecked="{Binding CloneIsType}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </GroupBox>
+
+                                    <!-- Mode 1: Single Clone -->
+                                    <GroupBox Header="방식 1: 단일 복제" FontWeight="SemiBold" Margin="0,0,0,12" Padding="10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" Text="{Binding SingleNewName, UpdateSourceTrigger=PropertyChanged}"
+                                                     FontSize="12" Padding="8,6" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                            <Button Grid.Column="1" Content="단일 복제 생성" Command="{Binding CloneSingleCommand}" Style="{StaticResource SuccessButton}"/>
+                                        </Grid>
+                                    </GroupBox>
+
+                                    <!-- Mode 2: Numbering Pattern Clone -->
+                                    <GroupBox Header="방식 2: 연번/패턴 일괄 복제 (예: PREFIX_1 ~ PREFIX_10)" FontWeight="SemiBold" Margin="0,0,0,12" Padding="10">
+                                        <StackPanel>
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                                    <TextBlock Text="접두사 (Prefix)" FontSize="11" Margin="0,0,0,3"/>
+                                                    <TextBox Text="{Binding PatternPrefix, UpdateSourceTrigger=PropertyChanged}" Padding="6,5"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Margin="4,0,4,0">
+                                                    <TextBlock Text="시작 번호" FontSize="11" Margin="0,0,0,3"/>
+                                                    <TextBox Text="{Binding PatternStart, UpdateSourceTrigger=PropertyChanged}" Padding="6,5"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Margin="4,0,0,0">
+                                                    <TextBlock Text="종료 번호" FontSize="11" Margin="0,0,0,3"/>
+                                                    <TextBox Text="{Binding PatternEnd, UpdateSourceTrigger=PropertyChanged}" Padding="6,5"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Preview & Button -->
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding PatternPreview}" FontSize="11" Foreground="#0284C7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                <Button Grid.Column="1" Content="연번 일괄 복제 생성" Command="{Binding ClonePatternCommand}" Style="{StaticResource SuccessButton}"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </GroupBox>
+
+                                    <!-- Mode 3: Multi-line List Clone -->
+                                    <GroupBox Header="방식 3: 이름 목록 일괄 복제 (줄바꿈 또는 엑셀에서 복사하여 붙여넣기)" FontWeight="SemiBold" Margin="0,0,0,6" Padding="10">
+                                        <StackPanel>
+                                            <TextBox Text="{Binding MultiCloneNames, UpdateSourceTrigger=PropertyChanged}"
+                                                     AcceptsReturn="True" Height="70" VerticalScrollBarVisibility="Auto"
+                                                     Padding="6" Margin="0,0,0,8"/>
+                                            <Button HorizontalAlignment="Right" Content="목록 일괄 복제 생성" Command="{Binding CloneMultiCommand}" Style="{StaticResource SuccessButton}"/>
+                                        </StackPanel>
+                                    </GroupBox>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <!-- TAB 2: 신규 매개변수 일괄 생성 (BATCH CREATE) -->
+                <TabItem Header="✨ 신규 매개변수 일괄 생성 (Batch Create)">
+                    <Grid Margin="0,10,0,0">
+                        <TabControl Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <!-- Sub-Tab 1: 간편 다중 생성 -->
+                            <TabItem Header="간편 여러 줄 생성 (Simple Batch)">
+                                <Grid Margin="14">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Shared Attributes -->
+                                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="데이터 유형" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <ComboBox ItemsSource="{Binding AvailableDataTypes}" SelectedItem="{Binding BatchDataType}" DisplayMemberPath="DisplayName" Padding="6,5"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                                            <TextBlock Text="그룹 매개변수" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <ComboBox ItemsSource="{Binding AvailableGroups}" SelectedItem="{Binding BatchGroup}" DisplayMemberPath="DisplayName" Padding="6,5"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                                            <TextBlock Text="바인딩 유형" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <RadioButton Content="인스턴스" IsChecked="{Binding BatchIsInstance}" Margin="0,0,8,0"/>
+                                                <RadioButton Content="유형" IsChecked="{Binding BatchIsType}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Names Input Box -->
+                                    <Grid Grid.Row="1" Margin="0,0,0,12">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Text="생성할 매개변수 이름 목록 (한 줄에 하나씩 입력 또는 엑셀에서 열 복사 후 붙여넣기):" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                        <TextBox Grid.Row="1" Text="{Binding BatchNamesInput, UpdateSourceTrigger=PropertyChanged}"
+                                                 AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                                                 FontFamily="Consolas, Malgun Gothic" FontSize="12" Padding="8"/>
+                                    </Grid>
+
+                                    <!-- Action Button -->
+                                    <Grid Grid.Row="2">
+                                        <TextBlock Text="※ 오른쪽의 [대상 카테고리]에 체크된 모든 카테고리에 일괄 바인딩됩니다." FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                                        <Button HorizontalAlignment="Right" Content="🚀 매개변수 일괄 생성 실행" Command="{Binding BatchCreateSimpleCommand}" Style="{StaticResource SuccessButton}"/>
+                                    </Grid>
+                                </Grid>
+                            </TabItem>
+
+                            <!-- Sub-Tab 2: 테이블/스프레드시트 생성 -->
+                            <TabItem Header="스프레드시트 편집기 (DataGrid Batch)">
+                                <Grid Margin="12">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Toolbar -->
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                        <Button Content="➕ 행 추가" Command="{Binding AddGridRowCommand}" Style="{StaticResource SecondaryButton}" Margin="0,0,6,0"/>
+                                        <Button Content="➖ 행 삭제" Command="{Binding RemoveGridRowCommand}" Style="{StaticResource SecondaryButton}" Margin="0,0,6,0"/>
+                                        <Button Content="📋 엑셀 붙여넣기 (이름 [Tab] 데이터유형 [Tab] 그룹)" Command="{Binding PasteClipboardToGridCommand}" Style="{StaticResource SecondaryButton}"/>
+                                    </StackPanel>
+
+                                    <!-- DataGrid -->
+                                    <DataGrid Grid.Row="1" ItemsSource="{Binding GridBatchItems}" SelectedItem="{Binding SelectedGridItem}"
+                                              AutoGenerateColumns="False" CanUserAddRows="False"
+                                              BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                              RowHeaderWidth="24" AlternatingRowBackground="#F8FAFC">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="매개변수 이름" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                                            <DataGridComboBoxColumn Header="데이터 유형" SelectedItemBinding="{Binding DataType}"
+                                                                    ItemsSource="{x:Static models:ForgeCatalog.AvailableDataTypes}"
+                                                                    DisplayMemberPath="DisplayName" Width="1.5*"/>
+                                            <DataGridComboBoxColumn Header="그룹 매개변수" SelectedItemBinding="{Binding Group}"
+                                                                    ItemsSource="{x:Static models:ForgeCatalog.AvailableGroups}"
+                                                                    DisplayMemberPath="DisplayName" Width="1.5*"/>
+                                            <DataGridCheckBoxColumn Header="인스턴스" Binding="{Binding IsInstance}" Width="80"/>
+                                            <DataGridTextColumn Header="상태" Binding="{Binding Status}" IsReadOnly="True" Width="80"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+
+                                    <!-- Action Button -->
+                                    <Grid Grid.Row="2" Margin="0,8,0,0">
+                                        <TextBlock Text="※ 테이블의 각 매개변수가 오른쪽 체크된 카테고리에 일괄 생성됩니다." FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                                        <Button HorizontalAlignment="Right" Content="🚀 테이블 매개변수 일괄 생성" Command="{Binding BatchCreateGridCommand}" Style="{StaticResource SuccessButton}"/>
+                                    </Grid>
+                                </Grid>
+                            </TabItem>
+                        </TabControl>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- Right: Categories Selection Panel (Always Visible & Synced) -->
+            <Border Grid.Column="1" Background="White" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                        <TextBlock Text="📁 대상 카테고리 선택" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock Text="매개변수가 바인딩될 Revit 카테고리를 선택하세요." FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <!-- Search Filter -->
+                    <TextBox Grid.Row="1" Text="{Binding CategorySearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="6,5" Margin="0,0,0,6">
+                        <TextBox.Resources>
+                            <VisualBrush x:Key="CatHintBrush" TileMode="None" Stretch="None" AlignmentX="Left">
+                                <VisualBrush.Visual>
+                                    <TextBlock Text="🔍 카테고리 검색 (예: 벽, 창, 일반 모델...)" Foreground="#94A3B8" Margin="4,0,0,0"/>
+                                </VisualBrush.Visual>
+                            </VisualBrush>
+                        </TextBox.Resources>
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Background" Value="{StaticResource CatHintBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- Fast Selection Buttons -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="전체 선택" Command="{Binding SelectAllCategoriesCommand}" Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11" Margin="0,0,4,0"/>
+                        <Button Content="전체 해제" Command="{Binding DeselectAllCategoriesCommand}" Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11" Margin="0,0,4,0"/>
+                        <Button Content="모델 카테고리만" Command="{Binding SelectModelCategoriesOnlyCommand}" Style="{StaticResource SecondaryButton}" Padding="8,4" FontSize="11"/>
+                    </StackPanel>
+
+                    <!-- Categories Checkbox List -->
+                    <Border Grid.Row="3" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Background="#FAFAFA" CornerRadius="4">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding FilteredCategories}" Padding="4">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsSelected}" Margin="4,3" VerticalContentAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" FontSize="12" Foreground="#0F172A"/>
+                                                <TextBlock Text="{Binding CategoryTypeDisplayName, StringFormat=' ({0})'}" FontSize="10" Foreground="#94A3B8"/>
+                                            </StackPanel>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Bottom Execution Log & Status -->
+        <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12,8">
+            <Expander Header="{Binding StatusMessage}" IsExpanded="False" FontWeight="SemiBold">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="120"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                        <Button Content="로그 지우기" Command="{Binding ClearLogCommand}" Style="{StaticResource SecondaryButton}" Padding="6,2" FontSize="10"/>
+                    </StackPanel>
+                    <TextBox Grid.Row="1" Text="{Binding ExecutionLog, Mode=OneWay}"
+                             IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                             FontFamily="Consolas" FontSize="11" Background="#F8FAFC" Padding="6"/>
+                </Grid>
+            </Expander>
+        </Border>
+    </Grid>
+</Window>
